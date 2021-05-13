@@ -23,4 +23,4 @@ def get_sparsity(model):
 	# 		print(f'{name:20} | nonzeros = {nz_count:7}/{total_count} ({100 * nz_count / total_count:6.2f}%) | total_pruned = {total_count - nz_count:7} | shape= {list(p.data.shape)}')
 	# print(f'surv: {nonzero}, pruned: {total - nonzero}, total: {total}, Comp. rate: {total / nonzero:10.2f}x ({100 * (total - nonzero) / total:6.2f}% pruned)')
 
-	return 100 * nonzero / total
+	return 100 * (1 - nonzero / total)
