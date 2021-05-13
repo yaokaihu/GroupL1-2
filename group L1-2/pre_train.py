@@ -43,7 +43,7 @@ def main():
         args.network)
 
     # 新建pre_train文件夹
-    pre_path = f'./checkpoint/pre_train/{args.dataset}_{args.network}/{args.dataset}_{args.network}_{args.penalty}_{args.seed}_{args.reg_param:.3F}'
+    pre_path = f'./checkpoint/pre_train/{args.dataset}_{args.network}/{args.dataset}_{args.network}_{args.penalty:.1f}_{args.seed}_{args.reg_param:.3F}'
     # pre_path = f'./checkpoint/pre_train/{args.dataset}_{args.network}/baseline'
 
     if not os.path.exists(pre_path):
@@ -60,36 +60,6 @@ def main():
     with open(os.path.join(pre_path, 'weight.txt'), "w")as f:
         for name, param in network.named_parameters():
             f.write(f"{name}{param}")
-
-
-
-    #
-    # '''prune'''
-    # # 新建prune文件夹
-    # pru_path = f'./checkpoint/pruned/{args.dataset}_{args.network}/{args.dataset}_{args.network}_{args.penalty:.1f}_{args.seed}_{args.reg_param}_pruned'
-    # if not os.path.exists(pru_path):
-    #     os.makedirs(pru_path)
-    #
-    # # 阈值剪枝后，存储conv权重
-    # with open(os.path.join(pru_path, "weight.txt"), "w")as f:
-    #     for name, param in network.named_parameters():
-    #         if 'conv' in name and 'weight' in name:
-    #             # 对filter
-    #             for i in range(param.shape[0]):
-    #                 param.data[i, :, :, :] = zero_out(param.data[i, :, :, :], args.thre)
-    #                 # 如果该filter的L1范数太小，则零化该过滤器
-    #                 if torch.sum(abs(param.data[i, :, :, :])).item() < 1:
-    #                     param.data[i, :, :, :] = 0
-    #                 print(torch.sum(abs(param.data[i, :, :, :])).item())
-    #         if 'fc' in name and 'weight' in name:
-    #             # 对fc
-    #             param.data = zero_out(param.data, args.thre)
-    #         f.write(f"{name}{param}")
-    # print("pruned")
-    #
-    # # 存储模型
-    # torch.save(network.state_dict(), os.path.join(pru_path, 'model.pth'))
-
 
 if __name__ == '__main__':
     main()
