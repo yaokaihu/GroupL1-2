@@ -28,6 +28,7 @@ class BatchSampler(Sampler):
 
 def train(train_dataset, test_dataset, network, optimizer, num_iterations=10000,
           train_batch_size=64, test_batch_size=100, test_iter=500, penalty=0.5, reg_param=0.005, stepvalue=[]):
+    print(reg_param)
     network.train()
     batch_sampler = BatchSampler(train_dataset, num_iterations, train_batch_size)  # train by iteration, not epoch
     train_loader = DataLoader(train_dataset, batch_sampler=batch_sampler, num_workers=4)

@@ -2,11 +2,23 @@
 from functools import partial
 from network import *
 import torch.nn as nn
+import torch
+import random
+import numpy as np
 
 import torch.optim as optim
 
 
-def get_hyperparameters(network_type):
+def get_hyperparameters(network_type, seed):
+
+	# 固定模型初始化
+	random.seed(seed)
+	# np.random.seed(seed)   # 非必要
+	torch.manual_seed(seed)
+	torch.cuda.manual_seed(seed)
+	torch.cuda.manual_seed_all(seed)
+	torch.backends.cudnn.deterministic = True  # 保证每次相同输入，有固定的相同输出
+	torch.backends.cudnn.benchmark = False
 
 	if network_type == 'lenet':
 		network = LeNet5().cuda()

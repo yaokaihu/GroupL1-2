@@ -13,7 +13,7 @@ def get_sparsity(model):
 	nonzero = 0
 	total = 0
 	for name, param in model.state_dict().items():
-		if 'weight' in name: # 因为只对weight结构稀疏化
+		if 'conv' in name and 'weight' in name: # 仅计算卷积权重的稀疏
 			p = param.cpu().detach().numpy()
 			nz_count = np.count_nonzero(p)
 			total_count = p.size

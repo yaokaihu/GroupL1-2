@@ -1,102 +1,62 @@
+'''主函数'''
+
+import argparse
+import os
+import random
+import numpy as np
+
 import torch
+import tool
+
+from tool.dataset import get_dataset
+from tool.train import train, test
 from tool.hyperparameter import get_hyperparameters
 from tool.sparsity import *
-import os
-import math
 
 
-def decimalPrecision(x):
-    '''
-    小数的精度
-    :param x: list
-    :return:
-    '''
-    a = []
-    for i in x:
-        if i == 0:
-            a.append(0)
-            continue
-        a.append(abs(int(math.log10(abs(i)))))
-    return a
+def main():
+    '''获取参数'''
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--seed', type=int, default=1701, help='random seed')
+    parser.add_argument('--dataset', type=str, default='mnist', help='dataset (mnist|fmnist|cifar10)')
+    parser.add_argument('--network', type=str, default='lenet', help='network (mlp|lenet|conv6|vgg19|resnet18)')
+    parser.add_argument('--penalty', type=float, default='0.5', help='regularization type(0.5|2)')
+    parser.add_argument('--reg_param', type=float, default='0.005', help='regularization parameter')
+    parser.add_argument('--thre', type=float, default='0.0001', help='Threshold value of pruning weight')
+    args = parser.parse_args()
+
+    '''pre_train'''
+    # 1. 取数据
+    train_dataset, test_dataset = get_dataset(args.dataset)
 
 
-def filter_L1_score(x):
-    """filter的L1范数"""
-    return torch.sum(abs(x)).item()
+    reg_list = np.arange(0.001, 0.011, 0.001)
+    seed_list = np.arange(1000,2100,100)
+    # reg_list = [0.005]
+    for seed in seed_list:
+        for reg_param in reg_list:
+            print(seed,reg_param)
+            network, optimizer, train_iteration, train_batch_size, test_batch_size, test_iter, stepvalue = get_hyperparameters(
+                args.network, seed)
+            # 2. 新建pre_train文件夹
+            pre_path = f'./checkpoint/pre_train/{args.dataset}_{args.network}/seed_{seed:.0f}/{args.dataset}_{args.network}_{args.penalty:.1f}_{seed:.0f}_{reg_param:.3F}'
+            # pre_path = f'./checkpoint/pre_train/{args.dataset}_{args.network}/baseline'
 
-def removeFilter(ele,param):
-    '''
-    剪枝L1范数小的filter
-    :param ele: 小数精度列表
-    :param param: filter:[20,1,5,5]
-    :return:
-    '''
-    dec = decimalPrecision(ele)
-    major = majorityElement(dec)  # 以L1得分的小数精度的众数，定位到要剪枝的filter
-    for i in range(param.shape[0]):
-        if dec[i] >= major:
-            param.data[i, :, :, :] = torch.zeros_like(param.data[i, :, :, :])  # 剪枝filter
+            if not os.path.exists(pre_path):
+                os.makedirs(pre_path)
+            # 3. run
+            result = train(train_dataset, test_dataset, network, optimizer, train_iteration, train_batch_size,
+                           test_batch_size, test_iter, args.penalty, reg_param, stepvalue)
 
-def majorityElement(nums):
-    """众数"""
-    if len(nums) == 1:
-        return nums[0]
-    dict = {}
-    for i in nums:
-        if i in dict:  # 在dict是否已存在键i
-            dict[i] += 1
-            if dict.get(i) >= (len(nums) + 1) / 2:
-                return i
-        else:
-            dict[i] = 1
-
-
-if __name__ == '__main__':
-    dataname = "mnist"
-    netname = "lenet"
-    network, optimizer, train_iteration, train_batch_size, test_batch_size, test_iter, stepvalue = get_hyperparameters(
-        netname)
-
-    # 阈值
-    thre = 0.0001
-    penalty = 2
-    seed = 1701
-    # reg_list = np.arange(0.001, 0.021, 0.001)
-
-    reg_list = [0.005]
-    for reg_param in reg_list:
-        # 加载pre_train模型
-        state_dict = torch.load(
-            f'./checkpoint/pre_train/{dataname}_{netname}/{dataname}_{netname}_{penalty:.1f}_{seed}_{reg_param:.3f}/model.pth')
-        network.load_state_dict(state_dict)
-        # 新建剪枝文件夹
-        path = f'./checkpoint/pruned/{dataname}_{netname}/{dataname}_{netname}_{penalty:.1f}_{seed}_{reg_param:.3f}_pruned'
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        # 阈值剪枝后，存储conv权重
-        with open(os.path.join(path, "weight.txt"), "w")as f:
-            with open(os.path.join(path, "conv_L1_score.txt"), "w")as f1:
+            # 4. 存储
+            torch.save(network.state_dict(), os.path.join(pre_path, 'model.pth'))
+            with open(os.path.join(pre_path, 'logs.txt'), 'w') as f:
+                for i in result:
+                    # train_loss      test_loss     test_acc
+                    f.write(f"{i[0]:.3f},{i[1]:.3f},{i[2]:.3f}\n")
+            with open(os.path.join(pre_path, 'weight.txt'), "w")as f:
                 for name, param in network.named_parameters():
-                    if 'conv' in name and 'weight' in name:
-                        ele = []
-                        for i in range(param.shape[0]):
-                            param.data[i, :, :, :] = zero_out(param.data[i, :, :, :], thre)  # 以阈值剪枝weight
-                            ith_filter_L1_score = filter_L1_score(param.data[i, :, :, :])   # 第i个filter的L1得分
-                            ele.append(ith_filter_L1_score)
-
-                        removeFilter(ele,param)
-
-                        # 记录剪枝后的filterL1范数
-                        for i in range(param.shape[0]):
-                            ith_filter_L1_score = filter_L1_score(param.data[i, :, :, :])   # 第i个filter的L1得分
-                            f1.write(f'{ith_filter_L1_score}\n')
-
-                    if 'fc' in name and 'weight' in name:
-                        param.data = zero_out(param.data, thre)
                     f.write(f"{name}{param}")
 
-        print("pruned")
-
-        # 存储模型
-        torch.save(network.state_dict(), os.path.join(path, 'model.pth'))
+if __name__ == '__main__':
+    main()
