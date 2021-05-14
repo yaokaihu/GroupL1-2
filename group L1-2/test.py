@@ -4,6 +4,15 @@ from network import *
 import numpy as np
 import matplotlib.pyplot as plt
 
+def get_sparsity(ith_filter):
+
+    p = ith_filter.cpu().detach().numpy()
+    nz_cout = np.count_nonzero(p)
+    total_count = p.size
+
+    return round(100 * (1 - nz_cout / total_count), 1)
+
+'''fileter权重均值'''
 # plt.rcParams['font.sans-serif']=['SimHei']
 # plt.rcParams['axes.unicode_minus'] = False
 # network = LeNet5()
@@ -29,13 +38,21 @@ import matplotlib.pyplot as plt
 # plt.show()
 
 
+'''保留的filter中零占比'''
+if __name__ == '__main__':
+    network = LeNet5().cuda()
 
-network = LeNet5().cuda()
+    reg_list = np.arange(0.001, 0.021, 0.001)
+    for reg_param in reg_list:
+        print(f"reg_param:{reg_param:.3f}")
+        state_dict = torch.load(f'./checkpoint/pruned/mnist_lenet/mnist_lenet_0.5_1701_{reg_param:.3f}_pruned/model.pth')
+        network.load_state_dict(state_dict)
 
-state_dict = torch.load(f'./checkpoint/pruned/mnist_lenet/mnist_lenet_2.0_1701_0.005_pruned/model.pth')
-network.load_state_dict(state_dict)
+        for name, param in network.named_parameters():
+            if 'conv' in name and 'weight' in name:
+                print(name)
+                for i in range(param.shape[0]):
+                    ith_filter_L1_score = torch.sum(abs(param.data[i, :, :, :])).item()
+                    if ith_filter_L1_score > 0:
+                        print(i,  get_sparsity(param.data[i, :, :, :]))
 
-for name, param in network.named_parameters():
-    if 'conv' in name and 'weight' in name:
-        for i in range(param.shape[0]):
-            print(torch.sum(abs(param.data[i, :, :, :])).item())

@@ -13,7 +13,10 @@ def decimalPrecision(x):
     '''
     a = []
     for i in x:
-        a.append(abs(int(math.log10(i))))
+        if i == 0:
+            a.append(0)
+            continue
+        a.append(abs(int(math.log10(abs(i)))))
     return a
 
 
@@ -56,9 +59,11 @@ if __name__ == '__main__':
 
     # 阈值
     thre = 0.0001
-    penalty = 0.5
+    penalty = 2
     seed = 1701
-    reg_list = np.arange(0.001, 0.021, 0.001)
+    # reg_list = np.arange(0.001, 0.021, 0.001)
+
+    reg_list = [0.005]
     for reg_param in reg_list:
         # 加载pre_train模型
         state_dict = torch.load(

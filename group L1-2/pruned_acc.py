@@ -10,7 +10,6 @@ import os
 def main():
     dataname = "mnist"
     netname = "lenet"
-    penalty = 0.5
     seed = 1701
     lasso_network, optimizer, train_iteration, train_batch_size, test_batch_size, test_iter, stepvalue = get_hyperparameters(
         netname)
@@ -34,7 +33,7 @@ def main():
     lasso_sparsity = get_sparsity(lasso_network)
 
     # group L1/2测试
-    reg_list = np.round(np.arange(0.001, 0.021, 0.001),3)
+    reg_list = np.round(np.arange(0.001, 0.011, 0.001),3)
     for reg_param in reg_list:
         state_dict = torch.load(
             f'./checkpoint/pruned/{dataname}_{netname}/{dataname}_{netname}_0.5_{seed}_{reg_param:.3f}_pruned/model.pth')  # 加载pruned group L1/2模型
